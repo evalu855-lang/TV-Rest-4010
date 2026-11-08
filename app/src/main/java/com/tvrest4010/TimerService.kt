@@ -1,3 +1,4 @@
+
 package com.tvrest4010
 
 import android.app.Service
@@ -23,8 +24,9 @@ class TimerService : Service() {
     private var blackScreen: View? = null
     private var windowManager: WindowManager? = null
 
-    private val playTime = 40 * 60 * 1000L
-private val restTime = 15 * 60 * 1000L
+    // 正式設定：播放40分鐘，休息15分鐘
+    private val playTime: Long = 40 * 60 * 1000L
+    private val restTime: Long = 15 * 60 * 1000L
 
     private val showRest: Runnable = object : Runnable {
         override fun run() {
@@ -42,8 +44,10 @@ private val restTime = 15 * 60 * 1000L
 
     override fun onCreate() {
         super.onCreate()
+
         windowManager =
             getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
         createNotification()
     }
 
@@ -53,11 +57,14 @@ private val restTime = 15 * 60 * 1000L
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "TV Rest 40/10",
+                "TV Rest 40/15",
                 NotificationManager.IMPORTANCE_LOW
             )
+
             val manager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
+
             manager.createNotificationChannel(channel)
         }
 
@@ -70,8 +77,8 @@ private val restTime = 15 * 60 * 1000L
             }
 
         val notification: Notification = builder
-            .setContentTitle("TV Rest 40/10")
-            .setContentText("休息計時正在執行")
+            .setContentTitle("TV Rest 40/15")
+            .setContentText("播放40分鐘，休息15分鐘")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .build()
 
@@ -83,6 +90,7 @@ private val restTime = 15 * 60 * 1000L
         flags: Int,
         startId: Int
     ): Int {
+
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
             return START_NOT_STICKY
@@ -90,6 +98,7 @@ private val restTime = 15 * 60 * 1000L
 
         handler.removeCallbacks(showRest)
         handler.removeCallbacks(hideRest)
+
         removeBlackScreen()
 
         handler.postDelayed(showRest, playTime)
@@ -129,6 +138,7 @@ private val restTime = 15 * 60 * 1000L
             } catch (e: Exception) {
             }
         }
+
         blackScreen = null
     }
 
@@ -138,5 +148,7 @@ private val restTime = 15 * 60 * 1000L
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
 }
