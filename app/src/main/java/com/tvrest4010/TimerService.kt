@@ -23,8 +23,8 @@ class TimerService : Service() {
     private var blackScreen: View? = null
     private var windowManager: WindowManager? = null
 
-    private val playTime = 60 * 1000L
-    private val restTime = 60 * 1000L
+    private val playTime = 40 * 60 * 1000L
+private val restTime = 15 * 60 * 1000L
 
     private val showRest: Runnable = object : Runnable {
         override fun run() {
