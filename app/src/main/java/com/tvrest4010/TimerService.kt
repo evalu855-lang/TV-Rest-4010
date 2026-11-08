@@ -23,18 +23,17 @@ class TimerService : Service() {
     private var blackScreen: View? = null
     private var windowManager: WindowManager? = null
 
-    // 測試版：播放 1 分鐘、休息 1 分鐘
     private val playTime = 60 * 1000L
     private val restTime = 60 * 1000L
 
-    private val showRest = object : Runnable {
+    private val showRest: Runnable = object : Runnable {
         override fun run() {
             showBlackScreen()
             handler.postDelayed(hideRest, restTime)
         }
     }
 
-    private val hideRest = object : Runnable {
+    private val hideRest: Runnable = object : Runnable {
         override fun run() {
             removeBlackScreen()
             handler.postDelayed(showRest, playTime)
@@ -62,11 +61,15 @@ class TimerService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, channelId)
-        } else {
-            Notification.Builder(this)
-        }
+        val builder: Notification.Builder =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(this, channelId)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+            }
+
+        val notification: Notification = builder
             .setContentTitle("TV Rest 40/10")
             .setContentText("休息計時正在執行")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
