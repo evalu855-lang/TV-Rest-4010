@@ -1,3 +1,4 @@
+Kotlin
 
 package com.tvrest4010
 
@@ -24,10 +25,11 @@ class TimerService : Service() {
     private var blackScreen: View? = null
     private var windowManager: WindowManager? = null
 
-    // 正式設定：播放40分鐘，休息15分鐘
+    // 播放40分鐘，休息15分鐘
     private val playTime: Long = 40 * 60 * 1000L
     private val restTime: Long = 15 * 60 * 1000L
 
+    // 顯示黑屏，15分鐘後恢復播放
     private val showRest: Runnable = object : Runnable {
         override fun run() {
             showBlackScreen()
@@ -35,6 +37,7 @@ class TimerService : Service() {
         }
     }
 
+    // 移除黑屏，40分鐘後再次休息
     private val hideRest: Runnable = object : Runnable {
         override fun run() {
             removeBlackScreen()
@@ -78,7 +81,7 @@ class TimerService : Service() {
 
         val notification: Notification = builder
             .setContentTitle("TV Rest 40/15")
-            .setContentText("播放40分鐘，休息15分鐘")
+            .setContentText("開機先黑屏15分鐘，播放40分鐘，休息15分鐘")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .build()
 
@@ -101,7 +104,9 @@ class TimerService : Service() {
 
         removeBlackScreen()
 
-        handler.postDelayed(showRest, playTime)
+        // 開機後立即黑屏15分鐘
+        showBlackScreen()
+        handler.postDelayed(hideRest, restTime)
 
         return START_STICKY
     }
