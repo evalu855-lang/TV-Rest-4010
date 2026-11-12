@@ -1,5 +1,3 @@
-Kotlin
-
 package com.tvrest4010
 
 import android.app.Service
