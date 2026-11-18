@@ -1,3 +1,4 @@
+
 package com.tvrest4010
 
 import android.app.Service
@@ -20,27 +21,32 @@ import android.view.WindowManager
 class TimerService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
+
     private var blackScreen: View? = null
     private var windowManager: WindowManager? = null
 
-    // 播放40分鐘，休息15分鐘
-    private val playTime: Long = 40 * 60 * 1000L
-    private val restTime: Long = 15 * 60 * 1000L
+    private val playTime = 40 * 60 * 1000L
+    private val restTime = 15 * 60 * 1000L
 
-    // 顯示黑屏，15分鐘後恢復播放
-    private val showRest: Runnable = object : Runnable {
-        override fun run() {
-            showBlackScreen()
-            handler.postDelayed(hideRest, restTime)
-        }
+    private val prefs by lazy {
+        getSharedPreferences("TV_REST_STATE", Context.MODE_PRIVATE)
     }
 
-    // 移除黑屏，40分鐘後再次休息
-    private val hideRest: Runnable = object : Runnable {
-        override fun run() {
-            removeBlackScreen()
-            handler.postDelayed(showRest, playTime)
-        }
+    private val playRunnable = Runnable {
+        startRest()
+    }
+
+    private val restRunnable = Runnable {
+        startPlay()
+    }
+
+    companion object {
+        const val ACTION_BOOT = "com.tvrest4010.ACTION_BOOT"
+        private const val KEY_PHASE = "phase"
+        private const val KEY_DEADLINE = "deadline"
+
+        private const val PLAY = "PLAY"
+        private const val REST = "REST"
     }
 
     override fun onCreate() {
@@ -77,9 +83,9 @@ class TimerService : Service() {
                 Notification.Builder(this)
             }
 
-        val notification: Notification = builder
+        val notification = builder
             .setContentTitle("TV Rest 40/15")
-            .setContentText("開機先黑屏15分鐘，播放40分鐘，休息15分鐘")
+            .setContentText("播放40分鐘，黑屏休息15分鐘")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .build()
 
@@ -97,19 +103,117 @@ class TimerService : Service() {
             return START_NOT_STICKY
         }
 
-        handler.removeCallbacks(showRest)
-        handler.removeCallbacks(hideRest)
+        val isBoot = intent?.action == ACTION_BOOT
 
-        removeBlackScreen()
-
-        // 開機後立即黑屏15分鐘
-        showBlackScreen()
-        handler.postDelayed(hideRest, restTime)
+        restoreState(isBoot)
 
         return START_STICKY
     }
 
+    private fun restoreState(isBoot: Boolean) {
+
+        val phase = prefs.getString(KEY_PHASE, null)
+        val deadline = prefs.getLong(KEY_DEADLINE, 0L)
+        val now = System.currentTimeMillis()
+
+        // 開機時：
+        // 如果原本正在休息，就繼續計算剩餘時間。
+        // 如果原本正在播放，就重新計算40分鐘。
+        if (isBoot) {
+
+            if (phase == REST && deadline > now) {
+                resumeRest(deadline)
+            } else {
+                startPlay()
+            }
+
+            return
+        }
+
+        // 服務重新啟動時，恢復原本計時狀態。
+        if (deadline > now) {
+
+            when (phase) {
+                REST -> resumeRest(deadline)
+                PLAY -> resumePlay(deadline)
+                else -> startPlay()
+            }
+
+        } else {
+
+            // 原本的播放時間已結束，進入休息。
+            if (phase == PLAY) {
+                startRest()
+            } else {
+                startPlay()
+            }
+        }
+    }
+
+    private fun startPlay() {
+
+        handler.removeCallbacks(playRunnable)
+        handler.removeCallbacks(restRunnable)
+
+        removeBlackScreen()
+
+        val deadline = System.currentTimeMillis() + playTime
+
+        prefs.edit()
+            .putString(KEY_PHASE, PLAY)
+            .putLong(KEY_DEADLINE, deadline)
+            .apply()
+
+        handler.postDelayed(playRunnable, playTime)
+    }
+
+    private fun resumePlay(deadline: Long) {
+
+        handler.removeCallbacks(playRunnable)
+        handler.removeCallbacks(restRunnable)
+
+        removeBlackScreen()
+
+        val remaining = deadline - System.currentTimeMillis()
+
+        handler.postDelayed(playRunnable, remaining)
+    }
+
+    private fun startRest() {
+
+        handler.removeCallbacks(playRunnable)
+        handler.removeCallbacks(restRunnable)
+
+        val deadline = System.currentTimeMillis() + restTime
+
+        prefs.edit()
+            .putString(KEY_PHASE, REST)
+            .putLong(KEY_DEADLINE, deadline)
+            .apply()
+
+        showBlackScreen()
+
+        handler.postDelayed(restRunnable, restTime)
+    }
+
+    private fun resumeRest(deadline: Long) {
+
+        handler.removeCallbacks(playRunnable)
+        handler.removeCallbacks(restRunnable)
+
+        showBlackScreen()
+
+        val remaining = deadline - System.currentTimeMillis()
+
+        if (remaining > 0) {
+            handler.postDelayed(restRunnable, remaining)
+        } else {
+            startPlay()
+        }
+    }
+
     private fun showBlackScreen() {
+
         if (blackScreen != null) return
 
         val view = View(this)
@@ -135,6 +239,7 @@ class TimerService : Service() {
     }
 
     private fun removeBlackScreen() {
+
         blackScreen?.let {
             try {
                 windowManager?.removeView(it)
