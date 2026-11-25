@@ -8,26 +8,36 @@ import android.os.Build
 
 class BootReceiver : BroadcastReceiver() {
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(
+        context: Context,
+        intent: Intent
+    ) {
 
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) {
+            return
+        }
 
-            val serviceIntent = Intent(
-                context,
-                TimerService::class.java
-            ).apply {
-                action = TimerService.ACTION_BOOT
+        val serviceIntent = Intent(
+            context,
+            TimerService::class.java
+        ).apply {
+            action = TimerService.ACTION_BOOT
+        }
+
+        try {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+                context.startForegroundService(serviceIntent)
+
+            } else {
+
+                context.startService(serviceIntent)
             }
 
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
-            } catch (e: Exception) {
-                // 避免背景啟動失敗造成當機
-            }
+        } catch (e: Exception) {
+
+            // 開機啟動失敗時避免造成系統當機
         }
     }
 }
