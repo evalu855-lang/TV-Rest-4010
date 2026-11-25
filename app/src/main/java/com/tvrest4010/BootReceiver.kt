@@ -25,19 +25,13 @@ class BootReceiver : BroadcastReceiver() {
         }
 
         try {
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
                 context.startForegroundService(serviceIntent)
-
             } else {
-
                 context.startService(serviceIntent)
             }
-
         } catch (e: Exception) {
-
-            // 開機啟動失敗時避免造成系統當機
+            e.printStackTrace()
         }
     }
 }
