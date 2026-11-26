@@ -109,17 +109,14 @@ class TimerService : Service() {
         when (intent?.action) {
 
             ACTION_START -> {
-                // 使用者手動開始：重新開始40分鐘
                 startPlay()
             }
 
             ACTION_BOOT -> {
-                // 電視開機：依照保存的狀態恢復
                 restoreAfterBoot()
             }
 
             else -> {
-                // 服務意外重啟：恢復原本狀態
                 restoreState()
             }
         }
@@ -135,57 +132,57 @@ class TimerService : Service() {
             .commit()
     }
 
+    // 電視開機後恢復計時
     private fun restoreAfterBoot() {
 
-        val version = prefs.getInt(KEY_VERSION, 0)
         val phase = prefs.getString(KEY_PHASE, null)
         val deadline = prefs.getLong(KEY_DEADLINE, 0L)
 
         val now = System.currentTimeMillis()
-
-        // 第一次安裝新版，清除舊版計時狀態
-        if (version != VERSION) {
-            startPlay()
-            return
-        }
 
         if (phase == REST && deadline > now) {
+
+            // 原本正在休息：保留剩餘休息時間
             resumeRest(deadline)
+
         } else {
-            // 播放中關機，重新開機重新計算40分鐘
+
+            // 原本正在播放：重新計算40分鐘
             startPlay()
         }
     }
 
+    // 服務意外重啟後恢復計時
     private fun restoreState() {
 
-        val version = prefs.getInt(KEY_VERSION, 0)
         val phase = prefs.getString(KEY_PHASE, null)
         val deadline = prefs.getLong(KEY_DEADLINE, 0L)
 
         val now = System.currentTimeMillis()
 
-        if (version != VERSION) {
-            startPlay()
-            return
-        }
+        when (phase) {
 
-        if (deadline <= now) {
-            if (phase == PLAY) {
-                startRest()
-            } else {
+            PLAY -> {
+                // 播放階段重新計算40分鐘
                 startPlay()
             }
-            return
-        }
 
-        when (phase) {
-            PLAY -> resumePlay(deadline)
-            REST -> resumeRest(deadline)
-            else -> startPlay()
+            REST -> {
+                if (deadline > now) {
+                    // 休息階段保留剩餘時間
+                    resumeRest(deadline)
+                } else {
+                    startPlay()
+                }
+            }
+
+            else -> {
+                startPlay()
+            }
         }
     }
 
+    // 開始播放40分鐘
     private fun startPlay() {
 
         handler.removeCallbacks(playRunnable)
@@ -200,6 +197,7 @@ class TimerService : Service() {
         handler.postDelayed(playRunnable, playTime)
     }
 
+    // 恢復播放計時
     private fun resumePlay(deadline: Long) {
 
         handler.removeCallbacks(playRunnable)
@@ -216,6 +214,7 @@ class TimerService : Service() {
         }
     }
 
+    // 開始休息15分鐘
     private fun startRest() {
 
         handler.removeCallbacks(playRunnable)
@@ -223,7 +222,6 @@ class TimerService : Service() {
 
         val deadline = System.currentTimeMillis() + restTime
 
-        // 先保存休息期限，再顯示黑屏
         saveState(REST, deadline)
 
         showBlackScreen()
@@ -231,6 +229,7 @@ class TimerService : Service() {
         handler.postDelayed(restRunnable, restTime)
     }
 
+    // 恢復剩餘休息時間
     private fun resumeRest(deadline: Long) {
 
         handler.removeCallbacks(playRunnable)
@@ -246,6 +245,7 @@ class TimerService : Service() {
         }
     }
 
+    // 顯示黑屏
     private fun showBlackScreen() {
 
         if (blackScreen != null) return
@@ -272,6 +272,7 @@ class TimerService : Service() {
         }
     }
 
+    // 移除黑屏
     private fun removeBlackScreen() {
 
         blackScreen?.let {
